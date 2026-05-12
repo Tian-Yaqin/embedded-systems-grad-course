@@ -1,9 +1,7 @@
 # ── Stage 1: 构建 MkDocs ──────────────────────────────────────────────────────
-FROM python:3.12-alpine AS builder
+FROM python:3.12-slim AS builder
 WORKDIR /build
-RUN apk add --no-cache cargo rust \
-	&& cargo install svgbob_cli --locked \
-	&& ln -sf /root/.cargo/bin/svgbob_cli /root/.cargo/bin/svgbob
+COPY svgbob /usr/local/bin/svgbob
 COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .

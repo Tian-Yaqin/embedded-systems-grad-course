@@ -43,3 +43,6 @@ secrets.yml
 *.sqlite
 *.sqlite3
 .local_exam_data/
+
+# 预编译二进制（本地构建用，不提交）
+svgbob
