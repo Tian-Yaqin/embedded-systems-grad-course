@@ -268,7 +268,7 @@ services:
     depends_on:
       - api
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "80"]
+      test: ["CMD", "nc", "-z", "127.0.0.1", "80"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -292,7 +292,7 @@ services:
       - "8000"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8000"]
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8000"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -321,7 +321,7 @@ services:
 
 **nc 命令说明**：
 - `nc -z`：零 I/O 模式，只检查端口是否打开
-- `localhost`：检查本地容器
+- `127.0.0.1`：使用 IPv4 地址（避免 localhost 解析到 IPv6 导致连接失败）
 - `80` / `8000`：端口号
 - **优点**：Alpine 镜像自带，无需安装额外工具（~30KB）
 
@@ -355,12 +355,13 @@ services:
 如果看到 `unhealthy` 状态，检查：
 1. **验证健康检查命令是否可用**：
    ```bash
-   docker exec <container_id> nc -z localhost 80
+   docker exec <container_id> nc -z 127.0.0.1 80
    ```
-   如果返回错误，说明 `nc` 命令不可用（极少见，Alpine 自带）
-2. 容器日志是否有错误
-3. `start_period` 是否足够长（服务启动可能需要更多时间）
-4. 端口是否正确（web 检查 `80`，api 检查 `8000`）
+   如果返回错误，说明端口未监听或 nc 命令不可用
+2. **检查 localhost vs 127.0.0.1**：某些容器中 `localhost` 可能解析到 IPv6 (`::1`)，导致连接失败，建议直接使用 `127.0.0.1`
+3. 容器日志是否有错误
+4. `start_period` 是否足够长（服务启动可能需要更多时间）
+5. 端口是否正确（web 检查 `80`，api 检查 `8000`）
 
 ---
 
