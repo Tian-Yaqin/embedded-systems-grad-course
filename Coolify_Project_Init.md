@@ -200,6 +200,41 @@ Coolify 会自动创建 `exam_data` 卷，无需手动配置。
 
 ## ❤️ 健康检查配置（重要！）
 
+### ⚠️ 健康检查关键注意事项
+
+#### 1. 必须使用 HTTPS 访问才能激活健康检查
+
+**重要**：在 Coolify 中，只有通过 **`https://`** 访问你的应用时，健康检查机制才会被正确激活。
+
+- ✅ **正确**：`https://robotics.uwis.cn`
+- ❌ **错误**：`http://robotics.uwis.cn`（健康检查可能不生效）
+
+虽然容器内部使用 HTTP (80 端口)，但 Caddy 反向代理会自动提供 HTTPS，并根据健康检查状态决定是否路由流量。
+
+#### 2. 健康检查命令必须在 Docker 镜像中可用
+
+**关键问题**：如果健康检查使用的命令（如 `wget`、`curl`、`nc`）在容器中不存在，健康检查会失败！
+
+**后果**（根据 [Coolify 官方文档](https://coolify.io/docs/knowledge-base/health-checks)）：
+```
+健康检查失败
+    ↓
+容器被标记为 unhealthy
+    ↓
+Traefik 不会路由流量到此容器
+    ↓
+网站返回 404 Not Found 或 "no available server" 错误
+```
+
+**常见错误**：
+- ❌ `nginx:alpine` 默认不包含 `wget` 或 `curl`
+- ❌ `python:alpine` 默认不包含 `wget` 或 `curl`
+- ✅ 大多数 Alpine 镜像**自带 `nc` (netcat)**
+
+**推荐方案**：使用 **`nc` (netcat)** 进行健康检查，避免安装额外工具（~30KB，Alpine 自带）。
+
+---
+
 ### 为什么需要健康检查？
 
 默认情况下，Coolify 会提示：
@@ -211,9 +246,9 @@ Traefik and Caddy will route traffic to this container even without a health che
 However, configuring a health check is recommended to ensure the resource is ready before receiving traffic.
 ```
 
-**问题**：没有健康检查，Caddy 可能在容器启动完成前就开始路由流量，导致用户看到错误页面。
+**问题**：没有健康检查，Traefik 可能在容器启动完成前就开始路由流量，导致用户看到错误页面。
 
-**解决方案**：为两个容器都添加健康检查配置。
+**解决方案**：为两个容器都添加健康检查配置。根据 [Coolify 官方文档](https://coolify.io/docs/knowledge-base/health-checks)，Docker Compose 项目必须在 `docker-compose.yaml` 中使用 `healthcheck` 属性定义健康检查。
 
 ### 添加健康检查
 
@@ -233,7 +268,7 @@ services:
     depends_on:
       - api
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      test: ["CMD", "nc", "-z", "localhost", "80"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -257,7 +292,7 @@ services:
       - "8000"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
+      test: ["CMD", "nc", "-z", "localhost", "8000"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -278,11 +313,22 @@ services:
 
 | 参数 | 值 | 说明 |
 |------|-----|------|
-| `test` | `wget` 命令 | 检查 HTTP 端点是否响应 |
+| `test` | `nc -z localhost PORT` | 使用 netcat 检查端口是否可访问 |
 | `interval` | `30s` | 每 30 秒检查一次 |
 | `timeout` | `10s` | 单次检查超时时间 |
 | `retries` | `3` | 连续失败 3 次才标记为 unhealthy |
 | `start_period` | `40s` | 容器启动后等待 40 秒再开始检查（给服务启动留时间） |
+
+**nc 命令说明**：
+- `nc -z`：零 I/O 模式，只检查端口是否打开
+- `localhost`：检查本地容器
+- `80` / `8000`：端口号
+- **优点**：Alpine 镜像自带，无需安装额外工具（~30KB）
+
+**为什么不用 wget/curl？**
+- `wget`：需要 `apk add wget`（~380KB）
+- `curl`：需要 `apk add curl`（~200KB）
+- `nc`：Alpine 自带，零安装成本
 
 ### 健康检查工作流程
 
@@ -293,8 +339,8 @@ services:
     ↓
 开始每 30 秒检查一次（interval）
     ↓
-    ├─ 成功 → 标记为 healthy → Caddy 开始路由流量
-    └─ 失败 → 重试 3 次 → 标记为 unhealthy → Caddy 停止路由流量
+    ├─ 成功 → 标记为 healthy → Traefik 开始路由流量
+    └─ 失败 → 重试 3 次 → 标记为 unhealthy → Traefik 停止路由流量
 ```
 
 ### 验证健康检查
@@ -307,9 +353,14 @@ services:
 ```
 
 如果看到 `unhealthy` 状态，检查：
-1. 容器日志是否有错误
-2. `start_period` 是否足够长（服务启动可能需要更多时间）
-3. 健康检查端点是否正确（web 检查 `/`，api 检查 `/health`）
+1. **验证健康检查命令是否可用**：
+   ```bash
+   docker exec <container_id> nc -z localhost 80
+   ```
+   如果返回错误，说明 `nc` 命令不可用（极少见，Alpine 自带）
+2. 容器日志是否有错误
+3. `start_period` 是否足够长（服务启动可能需要更多时间）
+4. 端口是否正确（web 检查 `80`，api 检查 `8000`）
 
 ---
 
@@ -358,11 +409,25 @@ services:
 ### Q3: 健康检查失败怎么办？
 
 **A**: 检查步骤：
-1. 查看容器日志：`Logs` → 选择 `web` 或 `api`
-2. 增加 `start_period`（如改为 60s）
-3. 验证健康检查端点：
-   - `web`: `http://localhost:80/` 应该返回 HTML 页面
-   - `api`: `http://localhost:8000/health` 应该返回 JSON
+
+1. **验证 nc 命令是否存在**（排除工具缺失问题）：
+   ```bash
+   docker exec <container_id> which nc
+   docker exec <container_id> nc -z localhost 80
+   ```
+   如果提示 "not found"，说明镜像中没有 `nc`（极少见）。
+
+2. **查看容器健康状态详情**：
+   ```bash
+   docker inspect <container_id> | grep -A 10 Health
+   ```
+   可以看到具体的错误信息。
+
+3. **查看容器日志**：`Logs` → 选择 `web` 或 `api`
+
+4. **增加启动时间**：如果服务启动慢，将 `start_period` 改为 `60s` 或更长。
+
+5. **临时禁用健康检查**（仅调试用）：如果问题持续，可以先注释掉 `healthcheck` 配置，让服务先运行起来，但要注意此时 Traefik 会立即路由流量，可能导致启动期间的请求失败。
 
 ### Q4: 数据会丢失吗？
 
