@@ -84,7 +84,42 @@ python3 deploy_local_or_coolify.py
 2. 定位 Coolify 应用
 3. 触发强制重建与重新部署
 
-线上站点地址：**http://robotics.uwis.cn**
+线上站点地址：**https://robotics.uwis.cn**
+
+### Docker 构建优化
+
+#### 预编译 svgbob_cli
+
+为了加速 Docker 构建过程，本项目使用**预编译的 svgbob_cli** 而不是每次构建时重新编译：
+
+- **构建时间优化**：从 5-10 分钟减少到约 1.5 分钟（提速 70-85%）
+- **预编译文件位置**：`bin/svgbob_cli`（1.9MB ELF 可执行文件）
+- **依赖要求**：运行时需要 `libgcc` 库（已在 Dockerfile 中配置）
+
+#### 如何更新 svgbob_cli
+
+如果需要更新到新版本的 svgbob_cli，有两种方式：
+
+**方式一：重新编译（推荐）**
+
+```bash
+# 使用原始编译方案构建
+docker build --target builder -t svgbob-builder .
+
+# 提取新编译的二进制文件
+docker run --rm -v "$(pwd)/bin:/output" svgbob-builder \
+  sh -c "cp /root/.cargo/bin/svgbob_cli /output/"
+
+# 提交更新
+git add bin/svgbob_cli
+git commit -m "chore: 更新 svgbob_cli 到新版本"
+```
+
+**方式二：使用原始编译方案**
+
+在 `Dockerfile` 中，注释掉预编译方案，取消注释原始编译方案（详见 Dockerfile 中的说明）。
+
+> **注意**：编译方案需要约 5-10 分钟构建时间，且依赖 crates.io 网络连接。
 
 ### 项目结构
 

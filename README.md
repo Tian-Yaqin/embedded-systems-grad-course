@@ -85,7 +85,42 @@ This script will:
 2. Locate the Coolify application
 3. Trigger a forced rebuild and redeployment
 
-The production site is served at **http://robotics.uwis.cn**.
+The production site is served at **https://robotics.uwis.cn**.
+
+### Docker Build Optimization
+
+#### Precompiled svgbob_cli
+
+To accelerate the Docker build process, this project uses a **precompiled svgbob_cli** binary instead of compiling from source on every build:
+
+- **Build Time Improvement**: Reduced from 5-10 minutes to ~1.5 minutes (70-85% faster)
+- **Binary Location**: `bin/svgbob_cli` (1.9MB ELF executable)
+- **Runtime Dependency**: Requires `libgcc` library (configured in Dockerfile)
+
+#### How to Update svgbob_cli
+
+If you need to update to a newer version of svgbob_cli, you have two options:
+
+**Option 1: Recompile (Recommended)**
+
+```bash
+# Build using the original compilation approach
+docker build --target builder -t svgbob-builder .
+
+# Extract the newly compiled binary
+docker run --rm -v "$(pwd)/bin:/output" svgbob-builder \
+  sh -c "cp /root/.cargo/bin/svgbob_cli /output/"
+
+# Commit the update
+git add bin/svgbob_cli
+git commit -m "chore: update svgbob_cli to new version"
+```
+
+**Option 2: Use Original Compilation Approach**
+
+In `Dockerfile`, comment out the precompiled approach and uncomment the original compilation lines (see comments in Dockerfile for details).
+
+> **Note**: The compilation approach requires ~5-10 minutes build time and depends on crates.io network connectivity.
 
 ### Project Structure
 
