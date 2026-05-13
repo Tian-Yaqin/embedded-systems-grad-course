@@ -84,7 +84,7 @@ python3 deploy_local_or_coolify.py
 2. 定位 Coolify 应用
 3. 触发强制重建与重新部署
 
-线上站点地址：**http://robotic.uwis.cn**
+线上站点地址：**http://robotics.uwis.cn**
 
 ### 项目结构
 

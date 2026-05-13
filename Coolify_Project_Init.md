@@ -120,7 +120,7 @@ Coolify 提供了 4 种构建方式，不同方式适用于不同的项目类型
 ```
 ┌─────────────────────────────────────────────────┐
 │              Coolify + Caddy                    │
-│            (caddy: robotic.uwis.cn)             │
+│            (caddy: robotics.uwis.cn)             │
 └────────────────┬────────────────────────────────┘
                  │
                  ├─────────────────┐
@@ -141,7 +141,7 @@ Coolify 提供了 4 种构建方式，不同方式适用于不同的项目类型
 
 ### 数据流
 
-1. **用户访问** `https://robotic.uwis.cn`
+1. **用户访问** `https://robotics.uwis.cn`
 2. **Caddy 代理**将请求路由到 `web:80`
 3. **Nginx** 提供 MkDocs 静态页面
 4. **前端页面**通过 `/api/` 路径调用后端 API
@@ -173,7 +173,7 @@ Coolify 提供了 4 种构建方式，不同方式适用于不同的项目类型
 
 | Service | Domain |
 |---------|--------|
-| `web` | `https://robotic.uwis.cn` |
+| `web` | `https://robotics.uwis.cn` |
 | `api` | （不需要公开域名，内部访问） |
 
 ### 4. 配置环境变量
@@ -239,7 +239,7 @@ services:
       retries: 3
       start_period: 40s
     labels:
-      caddy: "robotic.uwis.cn"
+      caddy: "robotics.uwis.cn"
       caddy.reverse_proxy: "{{upstreams 80}}"
     networks:
       - coolify
@@ -320,7 +320,7 @@ services:
 1. 完成上述所有配置
 2. 点击 **Deploy** 按钮
 3. 等待构建完成（约 5-10 分钟）
-4. 访问 `https://robotic.uwis.cn` 验证
+4. 访问 `https://robotics.uwis.cn` 验证
 
 ### 后续更新
 
@@ -392,7 +392,7 @@ services:
 - [ ] Git 仓库 URL 正确
 - [ ] Branch 选择 `main`
 - [ ] **Build Pack 选择 `Docker Compose`**（最重要！）
-- [ ] 域名配置：`web` → `robotic.uwis.cn`
+- [ ] 域名配置：`web` → `robotics.uwis.cn`
 - [ ] 环境变量：`TEACHER_PASSWORD`, `JWT_SECRET`, `DOCS_DIR`, `DB_PATH`
 - [ ] 健康检查已添加到 `docker-compose.yaml`
 - [ ] 两个容器都显示 `healthy` 状态

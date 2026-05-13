@@ -85,7 +85,7 @@ This script will:
 2. Locate the Coolify application
 3. Trigger a forced rebuild and redeployment
 
-The production site is served at **http://robotic.uwis.cn**.
+The production site is served at **http://robotics.uwis.cn**.
 
 ### Project Structure
 
